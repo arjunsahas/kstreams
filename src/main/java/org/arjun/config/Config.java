@@ -8,11 +8,11 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
-import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KTable;
+import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 
+import org.apache.kafka.streams.state.Stores;
 import org.arjun.generator.TimeSeriesGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -22,9 +22,8 @@ import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.time.Duration;
+import java.util.*;
 
 import static org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG;
 import static org.apache.kafka.clients.CommonClientConfigs.CLIENT_ID_CONFIG;
@@ -52,9 +51,6 @@ public class Config {
                 VALUE_SERIALIZER_CLASS_CONFIG, LongSerializer.class,
                 ACKS_CONFIG, "all");
         Map<String, Object> bootstrapServersConfig = new HashMap<>(all);
-//        bootstrapServersConfig.put(MIN_IN_SYNC_REPLICAS_CONFIG, "2");
-//        bootstrapServersConfig.put(MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "1");
-//        bootstrapServersConfig.put(ENABLE_IDEMPOTENCE_CONFIG, "true");
         return new DefaultKafkaProducerFactory<>(bootstrapServersConfig);
     }
 
@@ -86,16 +82,51 @@ public class Config {
         final StreamsBuilder builder = new StreamsBuilder();
         final KStream<String, Long> input = builder.stream(TM_TOPIC);
 
-        final KTable<String, Long> sumOfOddNumbers = input.
-                filter((k, v) -> v % 2 != 0)
+//        final KTable<String, Long> sumOfOddNumbers = input.
+//                filter((k, v) -> v % 2 != 0)
+//                .selectKey((k, v) -> "1")
+//                .groupByKey()
+//                .reduce(Long::sum);
+
+        var store = Stores.persistentTimestampedWindowStore(
+                "some-state-store",
+                Duration.ofMinutes(5),
+                Duration.ofMinutes(2),
+                false);
+        var materialized = Materialized
+                .<String, Long>as(store)
+                .withKeySerde(Serdes.String());
+
+//        List<Long> countSum = new ArrayList<>();
+//        KTable<Windowed<String>, Long> count = input
+//                .selectKey((k, v) -> "1")
+//                .groupByKey().windowedBy(SlidingWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(9), Duration.ofMillis(1)))
+//                .count(materialized);
+//
+//        count.toStream().foreach((key, value) -> {
+//            countSum.add(value);
+//            System.out.println(value);
+//            Long total = 0l;
+//            for (Long l: countSum) {
+//                total = total + l;
+//            }
+//            System.out.println("Total timestamps having 10 millisecond diff "+total);
+//        });
+//
+//        count.toStream().to(SUM_TOPIC);
+
+
+        KTable<Windowed<String>, Long> reduce = input
                 .selectKey((k, v) -> "1")
                 .groupByKey()
-                .reduce(Long::sum);
+                .windowedBy(SlidingWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(9), Duration.ofMillis(1)))
+                .reduce((value1, value2) -> value1, materialized);
+        KStream<Windowed<String>, Long> windowedLongKStream = reduce.toStream();
+        windowedLongKStream.to(SUM_TOPIC);
 
-        sumOfOddNumbers.toStream().foreach((key, value) -> System.out.println(value));
+//        sumOfOddNumbers.toStream().foreach((key, value) -> System.out.println(value));
 
-        sumOfOddNumbers.toStream().to(SUM_TOPIC);
-
+¸
         return builder.build();
     }
 

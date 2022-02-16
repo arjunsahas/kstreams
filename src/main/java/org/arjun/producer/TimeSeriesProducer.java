@@ -21,6 +21,7 @@ public class TimeSeriesProducer {
     public void produce(TimeSeriesEvent event) {
         TimeModel model = event.getModel();
         System.out.println("Producer: "+model);
+        System.out.println("Producer: "+model.getDateTime().getTime());
         timeModelKafkaTemplate.send(TM_TOPIC, model.getName(), model.getDateTime().getTime());
     }
 }
