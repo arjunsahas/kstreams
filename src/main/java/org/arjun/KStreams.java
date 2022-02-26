@@ -12,6 +12,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Properties;
 
 import static org.arjun.config.Config.SUM_TOPIC;
@@ -32,14 +33,14 @@ public class KStreams {
         properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, "sum-lambda-example-consumer");
         properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        final KafkaConsumer<Integer, Integer> consumer = new KafkaConsumer<>(properties);
+        final KafkaConsumer<Long, Long> consumer = new KafkaConsumer<>(properties);
         consumer.subscribe(Collections.singleton(SUM_TOPIC));
         while (true) {
-            final ConsumerRecords<Integer, Integer> records =
+            final ConsumerRecords<Long, Long> records =
                     consumer.poll(Duration.ofMillis(Long.MAX_VALUE));
 
-            for (final ConsumerRecord<Integer, Integer> record : records) {
-                System.out.println("Current sum of odd numbers is:" + record.value());
+            for (final ConsumerRecord<Long, Long> record : records) {
+                System.out.println("Time Generated is:" + new Date(record.value()));
             }
         }
     }

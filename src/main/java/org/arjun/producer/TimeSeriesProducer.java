@@ -1,7 +1,6 @@
 package org.arjun.producer;
 
 
-import org.apache.kafka.streams.state.ValueAndTimestamp;
 import org.arjun.generator.TimeSeriesEvent;
 import org.arjun.model.TimeModel;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +19,8 @@ public class TimeSeriesProducer {
     @EventListener(TimeSeriesEvent.class)
     public void produce(TimeSeriesEvent event) {
         TimeModel model = event.getModel();
-        System.out.println("Producer: "+model);
-        System.out.println("Producer: "+model.getDateTime().getTime());
+        System.out.println("Producer: " + model);
+        System.out.println("Producer: " + model.getDateTime().getTime());
         timeModelKafkaTemplate.send(TM_TOPIC, model.getName(), model.getDateTime().getTime());
     }
 }

@@ -4,15 +4,12 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
-import org.apache.kafka.streams.kstream.*;
-import org.apache.kafka.common.serialization.StringSerializer;
-
-
-import org.apache.kafka.streams.state.Stores;
+import org.apache.kafka.streams.kstream.KStream;
 import org.arjun.generator.TimeSeriesGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -22,8 +19,9 @@ import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 
-import java.time.Duration;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 
 import static org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG;
 import static org.apache.kafka.clients.CommonClientConfigs.CLIENT_ID_CONFIG;
@@ -82,51 +80,10 @@ public class Config {
         final StreamsBuilder builder = new StreamsBuilder();
         final KStream<String, Long> input = builder.stream(TM_TOPIC);
 
-//        final KTable<String, Long> sumOfOddNumbers = input.
-//                filter((k, v) -> v % 2 != 0)
-//                .selectKey((k, v) -> "1")
-//                .groupByKey()
-//                .reduce(Long::sum);
-
-        var store = Stores.persistentTimestampedWindowStore(
-                "some-state-store",
-                Duration.ofMinutes(5),
-                Duration.ofMinutes(2),
-                false);
-        var materialized = Materialized
-                .<String, Long>as(store)
-                .withKeySerde(Serdes.String());
-
-//        List<Long> countSum = new ArrayList<>();
-//        KTable<Windowed<String>, Long> count = input
-//                .selectKey((k, v) -> "1")
-//                .groupByKey().windowedBy(SlidingWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(9), Duration.ofMillis(1)))
-//                .count(materialized);
-//
-//        count.toStream().foreach((key, value) -> {
-//            countSum.add(value);
-//            System.out.println(value);
-//            Long total = 0l;
-//            for (Long l: countSum) {
-//                total = total + l;
-//            }
-//            System.out.println("Total timestamps having 10 millisecond diff "+total);
-//        });
-//
-//        count.toStream().to(SUM_TOPIC);
-
-
-        KTable<Windowed<String>, Long> reduce = input
-                .selectKey((k, v) -> "1")
-                .groupByKey()
-                .windowedBy(SlidingWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(9), Duration.ofMillis(1)))
-                .reduce((value1, value2) -> value1, materialized);
-        KStream<Windowed<String>, Long> windowedLongKStream = reduce.toStream();
-        windowedLongKStream.to(SUM_TOPIC);
-
-//        sumOfOddNumbers.toStream().foreach((key, value) -> System.out.println(value));
-
-¸
+//        TopologyImpl.startHoppingWindow(input);
+//        TopologyImpl.startSlidingWindow(input);
+//        TopologyImpl.startTumblingWindow(input);
+        TopologyImpl.startSlidingWindowCountEvents(input);
         return builder.build();
     }
 
@@ -144,5 +101,6 @@ public class Config {
     NewTopic sumTopic() {
         return TopicBuilder.name(SUM_TOPIC).partitions(1).replicas(1).build();
     }
+
 
 }
