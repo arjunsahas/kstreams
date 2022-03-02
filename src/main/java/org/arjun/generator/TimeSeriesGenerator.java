@@ -2,6 +2,7 @@ package org.arjun.generator;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.time.DateUtils;
 import org.arjun.model.TimeModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
@@ -38,9 +39,10 @@ public class TimeSeriesGenerator {
         @SneakyThrows
         @Override
         public void run() {
-            for (int i = 0; i < 1000; i++) {
+            for (int i = 0; i < 1; i++) {
                 Thread.sleep(10);
                 Date dateTime = new Date(System.currentTimeMillis());
+                dateTime = DateUtils.addMinutes(dateTime, 1);
                 TimeModel model = TimeModel.builder().dateTime(dateTime).name("T" + dateTime.getTime()).number(i).build();
                 eventPublisher.publishEvent(new TimeSeriesEvent(this, model));
             }

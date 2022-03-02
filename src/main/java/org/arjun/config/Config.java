@@ -73,7 +73,8 @@ public class Config {
         for (String key : timeSeriesProps.keySet()) {
             properties.put(key, timeSeriesProps.get(key));
         }
-        return new KafkaStreams(getTopology(), properties);
+//        return new KafkaStreams(getTopology(), properties);
+        return new KafkaStreams(getCustomProcessor(), properties);
     }
 
     static Topology getTopology() {
@@ -85,6 +86,10 @@ public class Config {
 //        TopologyImpl.startTumblingWindow(input);
         TopologyImpl.startSlidingWindowCountEvents(input);
         return builder.build();
+    }
+
+    static Topology getCustomProcessor() {
+        return TopologyImpl.startCustomProcessorApi();
     }
 
     @Bean

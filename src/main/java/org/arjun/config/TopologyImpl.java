@@ -2,22 +2,31 @@ package org.arjun.config;
 
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
+import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
 import org.apache.kafka.streams.state.WindowStore;
+import org.arjun.processor.StoreProcessor;
+import org.arjun.processor.FutureTimeProcessor;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.arjun.config.Config.SUM_TOPIC;
+import static org.arjun.config.Config.TM_TOPIC;
 
 /**
  * Sliding Window Vs Hopping Window,
- *  For Hopping window, window is created/reevaluated at fixed intervals independent of the incoming data.
- *  For Sliding window, window is re-evaluated only if the content of the window changes.
+ * For Hopping window, window is created/reevaluated at fixed intervals independent of the incoming data.
+ * For Sliding window, window is re-evaluated only if the content of the window changes.
  */
 public class TopologyImpl {
+
+    public static final String PROCESS_1 = "Process1";
+    public static final String PROCESS = "Process";
 
     public static void startTumblingWindow(final KStream<String, Long> input) {
         // Tumbling Window -  one event per window
@@ -86,6 +95,21 @@ public class TopologyImpl {
 
     private static void print(KStream<Windowed<String>, Long> windowedLongKStream) {
         windowedLongKStream.foreach((key, value) -> System.out.println(value));
+    }
+
+
+    public static Topology startCustomProcessorApi() {
+        StoreBuilder<KeyValueStore<String, Long>> storeBuilder = Stores
+                .keyValueStoreBuilder(Stores.inMemoryKeyValueStore("custom-time-series-store"), Serdes.String(), Serdes.Long());
+
+
+        Topology topology = new Topology();
+        topology.addSource("Source", TM_TOPIC)
+                .addProcessor(PROCESS, StoreProcessor::new, "Source")
+                .addProcessor(PROCESS_1, FutureTimeProcessor::new, PROCESS)
+                .addSink("sink",SUM_TOPIC, PROCESS_1)
+                .addStateStore(storeBuilder, PROCESS, PROCESS_1);
+        return topology;
     }
 
 }
